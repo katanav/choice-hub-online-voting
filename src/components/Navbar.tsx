@@ -1,69 +1,60 @@
-
+import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useLocation } from "react-router-dom";
+import { Vote } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function Navbar() {
-  const location = useLocation();
-  const isAuthenticated = false; // This would be replaced with actual auth check
+const Navbar = () => {
+  const { user, signOut } = useAuth();
 
   return (
-    <nav className="border-b bg-white/80 backdrop-blur-md fixed w-full z-10">
-      <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="bg-gradient-to-r from-vote-blue to-vote-teal text-white font-bold rounded-md p-2">
-              ChoiceHub
-            </div>
+    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <Link to="/" className="flex items-center gap-2 font-semibold">
+          <Vote className="h-5 w-5" />
+          <span>VotePoll</span>
+        </Link>
+        <nav className="flex items-center space-x-4 lg:space-x-6 mx-6">
+          <Link
+            to="/features"
+            className="text-sm font-medium transition-colors hover:text-primary"
+          >
+            Features
           </Link>
-          <div className="hidden md:flex items-center gap-6">
+          <Link
+            to="/pricing"
+            className="text-sm font-medium transition-colors hover:text-primary"
+          >
+            Pricing
+          </Link>
+          {user && (
             <Link
-              to="/"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === "/" ? "text-primary" : "text-muted-foreground"
-              }`}
+              to="/dashboard"
+              className="text-sm font-medium transition-colors hover:text-primary"
             >
-              Home
+              Dashboard
             </Link>
-            <Link
-              to="/features"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === "/features" ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              Features
-            </Link>
-            <Link
-              to="/pricing"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === "/pricing" ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              Pricing
-            </Link>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <Link to="/dashboard">
-              <Button>Dashboard</Button>
-            </Link>
+          )}
+        </nav>
+        <div className="flex items-center ml-auto">
+          {user ? (
+            <div className="flex items-center gap-4">
+              <span className="text-sm hidden md:inline">{user.email}</span>
+              <Button onClick={() => signOut()} variant="outline" size="sm">
+                Sign Out
+              </Button>
+            </div>
           ) : (
-            <>
-              <Link to="/login">
-                <Button variant="ghost" className="text-sm">
-                  Login
-                </Button>
-              </Link>
-              <Link to="/register">
-                <Button className="text-sm">
-                  Register
-                </Button>
-              </Link>
-            </>
+            <Link to="/login">
+              <Button variant="default" size="sm">
+                Sign In
+              </Button>
+            </Link>
           )}
         </div>
       </div>
-    </nav>
+    </header>
   );
-}
+};
+
+export default Navbar;

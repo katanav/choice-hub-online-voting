@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,54 +8,45 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Check } from "lucide-react";
-
-// Mock data for poll
-const mockPollData = {
-  id: "1",
-  title: "Team Lunch Location",
-  description: "Where should we go for our monthly team lunch?",
-  isMultipleChoice: false,
-  endDate: "May 15, 2025",
-  options: [
-    { id: 1, text: "Italian Restaurant", votes: 5 },
-    { id: 2, text: "Sushi Bar", votes: 8 },
-    { id: 3, text: "Mexican Grill", votes: 4 },
-    { id: 4, text: "Vegetarian Cafe", votes: 7 },
-  ]
-};
-
-// Mock data for another poll
-const mockPollData2 = {
-  id: "2",
-  title: "New Project Name",
-  description: "Help us choose a name for our upcoming project",
-  isMultipleChoice: true,
-  endDate: "May 20, 2025",
-  options: [
-    { id: 1, text: "Phoenix", votes: 3 },
-    { id: 2, text: "Horizon", votes: 10 },
-    { id: 3, text: "Nebula", votes: 5 },
-    { id: 4, text: "Quantum", votes: 0 },
-  ]
-};
+import { Check, Loader2 } from "lucide-react";
+import { usePolls } from "@/hooks/usePolls";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/components/ui/use-toast";
 
 const VotePoll = () => {
   const { pollId } = useParams();
   const navigate = useNavigate();
-  
-  // In a real app, we would fetch the poll data based on pollId
-  const pollData = pollId === "2" ? mockPollData2 : mockPollData;
+  const { polls, loading, submitVote, hasVoted } = usePolls();
+  const { user } = useAuth();
   
   const [selectedOption, setSelectedOption] = useState<string>("");
-  const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
+  
+  const poll = polls.find(p => p.id === pollId);
+  const isPastEndDate = poll ? new Date(poll.end_date) < new Date() : false;
+  
+  useEffect(() => {
+    const checkVoteStatus = async () => {
+      if (pollId && user) {
+        const voted = await hasVoted(pollId);
+        setShowResults(voted || isPastEndDate);
+        setCheckingVoteStatus(false);
+      } else if (!user) {
+        setCheckingVoteStatus(false);
+      }
+    };
+    
+    checkVoteStatus();
+  }, [pollId, user, isPastEndDate]);
   
   const handleSingleSelection = (value: string) => {
     setSelectedOption(value);
   };
   
-  const handleMultiSelection = (optionId: number) => {
+  const handleMultiSelection = (optionId: string) => {
     setSelectedOptions(prevSelected => 
       prevSelected.includes(optionId)
         ? prevSelected.filter(id => id !== optionId)
@@ -63,19 +54,75 @@ const VotePoll = () => {
     );
   };
   
-  const handleVoteSubmit = () => {
-    // In a real app, this would submit the vote to a database
-    if (pollData.isMultipleChoice) {
-      console.log("Voted for options:", selectedOptions);
-    } else {
-      console.log("Voted for option:", selectedOption);
+  const handleVoteSubmit = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to vote.",
+        variant: "destructive"
+      });
+      navigate("/login");
+      return;
     }
     
-    // Show results after voting
-    setHasVoted(true);
+    if (!poll) return;
+    
+    setIsSubmitting(true);
+    try {
+      const optionIds = poll.is_multiple_choice 
+        ? selectedOptions 
+        : [selectedOption];
+        
+      const success = await submitVote(poll.id, optionIds);
+      if (success) {
+        setShowResults(true);
+      }
+    } catch (error) {
+      console.error("Error submitting vote:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
-  const totalVotes = pollData.options.reduce((sum, option) => sum + option.votes, 0);
+  if (loading || checkingVoteStatus) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow py-20">
+          <div className="container max-w-3xl flex justify-center items-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+  
+  if (!poll) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow py-20">
+          <div className="container max-w-3xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Poll Not Found</CardTitle>
+                <CardDescription>The poll you're looking for doesn't exist or has been removed.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => navigate("/dashboard")}>
+                  Back to Dashboard
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+  
+  const totalVotes = poll.options.reduce((sum, option) => sum + (option.votes || 0), 0);
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -84,16 +131,21 @@ const VotePoll = () => {
         <div className="container max-w-3xl">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">{pollData.title}</CardTitle>
-              <CardDescription>{pollData.description}</CardDescription>
-              <p className="text-sm text-muted-foreground">Voting ends on {pollData.endDate}</p>
+              <CardTitle className="text-2xl">{poll.title}</CardTitle>
+              {poll.description && <CardDescription>{poll.description}</CardDescription>}
+              <p className="text-sm text-muted-foreground">
+                {isPastEndDate 
+                  ? `Ended on ${new Date(poll.end_date).toLocaleDateString()}` 
+                  : `Voting ends on ${new Date(poll.end_date).toLocaleDateString()}`
+                }
+              </p>
             </CardHeader>
             <CardContent>
-              {!hasVoted ? (
+              {!showResults ? (
                 <>
-                  {pollData.isMultipleChoice ? (
+                  {poll.is_multiple_choice ? (
                     <div className="space-y-4">
-                      {pollData.options.map((option) => (
+                      {poll.options.map((option) => (
                         <div key={option.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`option-${option.id}`}
@@ -106,9 +158,9 @@ const VotePoll = () => {
                     </div>
                   ) : (
                     <RadioGroup value={selectedOption} onValueChange={handleSingleSelection} className="space-y-4">
-                      {pollData.options.map((option) => (
+                      {poll.options.map((option) => (
                         <div key={option.id} className="flex items-center space-x-2">
-                          <RadioGroupItem value={option.id.toString()} id={`option-${option.id}`} />
+                          <RadioGroupItem value={option.id} id={`option-${option.id}`} />
                           <Label htmlFor={`option-${option.id}`}>{option.text}</Label>
                         </div>
                       ))}
@@ -120,24 +172,31 @@ const VotePoll = () => {
                     </Button>
                     <Button 
                       onClick={handleVoteSubmit}
-                      disabled={pollData.isMultipleChoice ? selectedOptions.length === 0 : !selectedOption}
+                      disabled={
+                        isSubmitting || 
+                        (poll.is_multiple_choice ? selectedOptions.length === 0 : !selectedOption) ||
+                        isPastEndDate
+                      }
                     >
-                      Submit Vote
+                      {isSubmitting ? "Submitting..." : "Submit Vote"}
                     </Button>
                   </div>
                 </>
               ) : (
                 <div className="space-y-6">
-                  <div className="bg-muted/50 p-4 rounded-md text-center mb-4">
-                    <div className="flex items-center justify-center gap-2 text-green-600">
-                      <Check className="h-5 w-5" />
-                      <p className="font-medium">Your vote has been recorded</p>
+                  {user && !isPastEndDate && (
+                    <div className="bg-muted/50 p-4 rounded-md text-center mb-4">
+                      <div className="flex items-center justify-center gap-2 text-green-600">
+                        <Check className="h-5 w-5" />
+                        <p className="font-medium">Your vote has been recorded</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 
                   <div className="space-y-4">
-                    {pollData.options.map((option) => {
-                      const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+                    {poll.options.map((option) => {
+                      const votes = option.votes || 0;
+                      const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
                       return (
                         <div key={option.id} className="space-y-1">
                           <div className="flex justify-between items-center">
@@ -150,7 +209,7 @@ const VotePoll = () => {
                               style={{ width: `${percentage}%` }}
                             ></div>
                           </div>
-                          <p className="text-xs text-muted-foreground">{option.votes} votes</p>
+                          <p className="text-xs text-muted-foreground">{votes} vote{votes !== 1 ? 's' : ''}</p>
                         </div>
                       );
                     })}

@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,18 +9,24 @@ import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Plus, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePolls } from "@/hooks/usePolls";
+import { toast } from "@/components/ui/use-toast";
 
 const CreatePoll = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { createPoll } = usePolls();
+  
   const [pollTitle, setPollTitle] = useState("");
   const [pollDescription, setPollDescription] = useState("");
   const [endDate, setEndDate] = useState("");
   const [options, setOptions] = useState([
-    { id: 1, text: "", votes: 0 },
-    { id: 2, text: "", votes: 0 },
+    { id: 1, text: "" },
+    { id: 2, text: "" },
   ]);
   const [isMultipleChoice, setIsMultipleChoice] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOptionChange = (id: number, value: string) => {
     setOptions(
@@ -31,7 +38,7 @@ const CreatePoll = () => {
 
   const addOption = () => {
     const newId = options.length > 0 ? Math.max(...options.map(o => o.id)) + 1 : 1;
-    setOptions([...options, { id: newId, text: "", votes: 0 }]);
+    setOptions([...options, { id: newId, text: "" }]);
   };
 
   const removeOption = (id: number) => {
@@ -40,13 +47,94 @@ const CreatePoll = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would save the poll to a database
-    console.log("Poll created:", { pollTitle, pollDescription, endDate, options, isMultipleChoice });
+  const validateForm = () => {
+    // Check if title is provided
+    if (!pollTitle.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please provide a poll title.",
+        variant: "destructive"
+      });
+      return false;
+    }
     
-    // For demo purposes, we'll navigate to dashboard as if poll was created
-    navigate("/dashboard");
+    // Check if end date is provided and is in the future
+    if (!endDate) {
+      toast({
+        title: "End date required",
+        description: "Please set when the poll will end.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    const selectedDate = new Date(endDate);
+    const now = new Date();
+    if (selectedDate <= now) {
+      toast({
+        title: "Invalid end date",
+        description: "The end date must be in the future.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    // Check if at least two options are provided
+    const validOptions = options.filter(option => option.text.trim() !== "");
+    if (validOptions.length < 2) {
+      toast({
+        title: "Options required",
+        description: "Please provide at least two options.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create a poll.",
+        variant: "destructive"
+      });
+      navigate("/login");
+      return;
+    }
+    
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const optionTexts = options
+        .filter(option => option.text.trim() !== "")
+        .map(option => option.text.trim());
+      
+      const pollId = await createPoll(
+        pollTitle.trim(),
+        pollDescription.trim(),
+        optionTexts,
+        endDate,
+        isMultipleChoice
+      );
+      
+      if (pollId) {
+        toast({
+          title: "Poll created",
+          description: "Your poll has been created successfully.",
+        });
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error creating poll:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -90,6 +178,7 @@ const CreatePoll = () => {
                     value={endDate} 
                     onChange={(e) => setEndDate(e.target.value)} 
                     required
+                    min={new Date().toISOString().split('T')[0]} // Today as min date
                   />
                 </div>
                 <div className="flex items-center space-x-2">
@@ -140,10 +229,20 @@ const CreatePoll = () => {
             </Card>
 
             <div className="flex justify-end space-x-4">
-              <Button type="button" variant="outline" onClick={() => navigate("/dashboard")}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => navigate("/dashboard")}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit">Create Poll</Button>
+              <Button 
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Creating Poll..." : "Create Poll"}
+              </Button>
             </div>
           </form>
         </div>
