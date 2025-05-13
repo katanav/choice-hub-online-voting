@@ -11,6 +11,8 @@ import Register from "./pages/Register";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
 import Dashboard from "./pages/Dashboard";
+import CreatePoll from "./pages/CreatePoll";
+import VotePoll from "./pages/VotePoll";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +29,8 @@ const App = () => (
           <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/create-poll" element={<CreatePoll />} />
+          <Route path="/vote/:pollId" element={<VotePoll />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

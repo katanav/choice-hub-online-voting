@@ -41,9 +41,11 @@ const PollCard = ({ poll, isActive = true }) => (
             <Users className="h-4 w-4" />
             <span>{poll.totalVoters} participants</span>
           </div>
-          <Button variant={isActive ? "default" : "outline"} size="sm">
-            {isActive ? "Manage Poll" : "View Results"}
-          </Button>
+          <Link to={`/vote/${poll.id}`}>
+            <Button variant={isActive ? "default" : "outline"} size="sm">
+              {isActive ? "Vote Now" : "View Results"}
+            </Button>
+          </Link>
         </div>
       </div>
     </CardContent>

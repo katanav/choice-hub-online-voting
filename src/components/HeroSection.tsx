@@ -9,24 +9,23 @@ export default function HeroSection() {
       <div className="container relative pt-32 pb-20 text-center">
         <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            Modern Online Voting <br /> 
+            Simple Online Voting <br /> 
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-vote-blue to-vote-teal">
-              Made Simple
+              For Everyone
             </span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Create secure polls, elections, and surveys with our easy-to-use platform. 
-            Get real-time results and insights in minutes.
+            Create polls in minutes and get instant results. Perfect for team decisions, event planning, or quick surveys.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register">
               <Button size="lg" className="bg-gradient-to-r from-vote-blue to-vote-teal hover:opacity-90">
-                Get Started
+                Create Your First Poll
               </Button>
             </Link>
             <Link to="/features">
               <Button size="lg" variant="outline">
-                Learn More
+                How It Works
               </Button>
             </Link>
           </div>
