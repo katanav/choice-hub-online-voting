@@ -9,9 +9,8 @@ export default function HeroSection() {
       <div className="container relative pt-32 pb-20 text-center">
         <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            Simple Online Voting <br /> 
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-vote-blue to-vote-teal">
-              For Everyone
+              ELECTRAVOTE
             </span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -31,8 +30,8 @@ export default function HeroSection() {
           </div>
           <div className="mt-16">
             <img 
-              src="https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?auto=format&fit=crop&w=1200&h=600" 
-              alt="Voting Dashboard Preview" 
+              src="https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=1200&h=600" 
+              alt="People voting at ballot boxes" 
               className="rounded-lg shadow-2xl border"
             />
           </div>

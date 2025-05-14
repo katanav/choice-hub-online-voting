@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ const Navbar = () => {
       <div className="container flex h-14 items-center">
         <Link to="/" className="flex items-center gap-2 font-semibold">
           <Vote className="h-5 w-5" />
-          <span>VotePoll</span>
+          <span>ELECTRAVOTE</span>
         </Link>
         <nav className="flex items-center space-x-4 lg:space-x-6 mx-6">
           <Link
@@ -25,7 +26,7 @@ const Navbar = () => {
             to="/pricing"
             className="text-sm font-medium transition-colors hover:text-primary"
           >
-            Pricing
+            Contact Us
           </Link>
           {user && (
             <Link

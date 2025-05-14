@@ -9,21 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      feedback: {
-        Row: {
-          content: string
-          id: number
-        }
-        Insert: {
-          content: string
-          id?: number
-        }
-        Update: {
-          content?: string
-          id?: number
-        }
-        Relationships: []
-      }
       poll_options: {
         Row: {
           created_at: string

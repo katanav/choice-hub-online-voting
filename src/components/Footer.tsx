@@ -9,7 +9,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="bg-gradient-to-r from-vote-blue to-vote-teal text-white font-bold rounded-md p-2">
-                ChoiceHub
+                ELECTRAVOTE
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -29,18 +29,13 @@ export default function Footer() {
                   Features
                 </Link>
               </li>
-              <li>
-                <Link to="/pricing" className="text-sm text-muted-foreground hover:text-primary">
-                  Pricing
-                </Link>
-              </li>
             </ul>
           </div>
           <div>
             <h3 className="text-lg font-semibold mb-4">Contact</h3>
             <ul className="space-y-2">
               <li className="text-sm text-muted-foreground">
-                support@choicehub.com
+                support@electravote.com
               </li>
               <li className="text-sm text-muted-foreground">
                 123 Voting Street, Democracy City
@@ -50,7 +45,7 @@ export default function Footer() {
         </div>
         <div className="mt-8 border-t pt-8">
           <p className="text-sm text-muted-foreground text-center">
-            © {new Date().getFullYear()} ChoiceHub. All rights reserved.
+            © {new Date().getFullYear()} ELECTRAVOTE. All rights reserved.
           </p>
         </div>
       </div>
