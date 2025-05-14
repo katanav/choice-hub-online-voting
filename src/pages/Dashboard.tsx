@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Check, Plus, User, Users, Vote } from "lucide-react";
+import { Check, Lock, Plus, Search, User, Users, Vote } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "react-router-dom";
 import { usePolls } from "@/hooks/usePolls";
 import { useAuth } from "@/contexts/AuthContext";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 const PollCard = ({ poll, isActive = true }) => {
   const totalVotes = poll.options.reduce((sum, option) => sum + (option.votes || 0), 0);
@@ -20,7 +22,10 @@ const PollCard = ({ poll, isActive = true }) => {
   return (
     <Card className="card-hover">
       <CardHeader>
-        <CardTitle>{poll.title}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          {poll.is_private && <Lock className="h-4 w-4 text-amber-500" />}
+          {poll.title}
+        </CardTitle>
         <CardDescription>
           {pollIsActive 
             ? `Ends on ${new Date(poll.end_date).toLocaleDateString()}`
@@ -59,14 +64,19 @@ const PollCard = ({ poll, isActive = true }) => {
 const Dashboard = () => {
   const { polls, loading } = usePolls();
   const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Filter active and completed polls
   const currentDate = new Date();
-  const activePolls = polls.filter(poll => new Date(poll.end_date) > currentDate);
-  const completedPolls = polls.filter(poll => new Date(poll.end_date) <= currentDate);
+  const filteredPolls = polls.filter(poll => 
+    poll.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const activePolls = filteredPolls.filter(poll => new Date(poll.end_date) > currentDate);
+  const completedPolls = filteredPolls.filter(poll => new Date(poll.end_date) <= currentDate);
   
   // Filter user's polls
-  const userPolls = user ? polls.filter(poll => poll.created_by === user.id) : [];
+  const userPolls = user ? filteredPolls.filter(poll => poll.created_by === user.id) : [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -80,6 +90,18 @@ const Dashboard = () => {
                 <Plus className="mr-2 h-4 w-4" /> Create New Poll
               </Button>
             </Link>
+          </div>
+
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search polls..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
 
           {loading ? (

@@ -15,6 +15,7 @@ export interface Poll {
   title: string;
   description: string | null;
   is_multiple_choice: boolean;
+  is_private: boolean;
   end_date: string;
   created_at: string;
   created_by: string;
@@ -94,7 +95,9 @@ export const usePolls = () => {
     description: string, 
     options: string[], 
     endDate: string, 
-    isMultipleChoice: boolean
+    isMultipleChoice: boolean,
+    isPrivate: boolean = false,
+    password: string | null = null
   ) => {
     if (!user) return null;
     
@@ -107,6 +110,8 @@ export const usePolls = () => {
           description,
           end_date: endDate,
           is_multiple_choice: isMultipleChoice,
+          is_private: isPrivate,
+          password: password,
           created_by: user.id
         })
         .select()
@@ -138,6 +143,23 @@ export const usePolls = () => {
         variant: "destructive"
       });
       return null;
+    }
+  };
+
+  const checkPollPassword = async (pollId: string, password: string) => {
+    try {
+      const { data, error } = await supabase
+        .rpc('check_poll_password', { 
+          poll_id: pollId, 
+          password_attempt: password 
+        });
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error) {
+      console.error('Error checking poll password:', error);
+      return false;
     }
   };
 
@@ -206,6 +228,11 @@ export const usePolls = () => {
     }
   };
 
+  const isPollPrivate = (pollId: string) => {
+    const poll = polls.find(p => p.id === pollId);
+    return poll?.is_private || false;
+  };
+
   useEffect(() => {
     if (user) {
       fetchPolls();
@@ -218,6 +245,8 @@ export const usePolls = () => {
     createPoll,
     fetchPolls,
     submitVote,
-    hasVoted
+    hasVoted,
+    checkPollPassword,
+    isPollPrivate
   };
 };

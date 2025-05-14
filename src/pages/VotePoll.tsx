@@ -8,15 +8,70 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Lock } from "lucide-react";
 import { usePolls } from "@/hooks/usePolls";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+
+const PasswordForm = ({ onVerify }) => {
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await onVerify(password);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main className="flex-grow py-20">
+        <div className="container max-w-md">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-amber-500" /> Private Poll
+              </CardTitle>
+              <CardDescription>
+                This poll is password-protected. Enter the password to continue.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter poll password"
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Verifying..." : "Access Poll"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+};
 
 const VotePoll = () => {
   const { pollId } = useParams();
   const navigate = useNavigate();
-  const { polls, loading, submitVote, hasVoted } = usePolls();
+  const { polls, loading, submitVote, hasVoted, checkPollPassword } = usePolls();
   const { user } = useAuth();
   
   const [selectedOption, setSelectedOption] = useState<string>("");
@@ -24,9 +79,11 @@ const VotePoll = () => {
   const [showResults, setShowResults] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkingVoteStatus, setCheckingVoteStatus] = useState(true);
+  const [accessGranted, setAccessGranted] = useState(false);
   
   const poll = polls.find(p => p.id === pollId);
   const isPastEndDate = poll ? new Date(poll.end_date) < new Date() : false;
+  const isPrivate = poll?.is_private || false;
   
   useEffect(() => {
     const checkVoteStatus = async () => {
@@ -39,8 +96,33 @@ const VotePoll = () => {
       }
     };
     
-    checkVoteStatus();
-  }, [pollId, user, isPastEndDate]);
+    // Check if poll is private and set access status
+    if (poll) {
+      if (!isPrivate) {
+        setAccessGranted(true);
+      }
+      checkVoteStatus();
+    }
+  }, [pollId, user, isPastEndDate, poll, isPrivate]);
+  
+  const handlePasswordVerification = async (password) => {
+    if (!pollId) return;
+    
+    const isCorrect = await checkPollPassword(pollId, password);
+    if (isCorrect) {
+      setAccessGranted(true);
+      toast({
+        title: "Access granted",
+        description: "Password verified successfully.",
+      });
+    } else {
+      toast({
+        title: "Incorrect password",
+        description: "The password you entered is incorrect. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   
   const handleSingleSelection = (value: string) => {
     setSelectedOption(value);
@@ -122,6 +204,11 @@ const VotePoll = () => {
     );
   }
   
+  // Show password form if the poll is private and access is not granted yet
+  if (isPrivate && !accessGranted) {
+    return <PasswordForm onVerify={handlePasswordVerification} />;
+  }
+  
   const totalVotes = poll.options.reduce((sum, option) => sum + (option.votes || 0), 0);
   
   return (
@@ -131,7 +218,10 @@ const VotePoll = () => {
         <div className="container max-w-3xl">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">{poll.title}</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                {isPrivate && <Lock className="h-5 w-5 text-amber-500" />}
+                {poll.title}
+              </CardTitle>
               {poll.description && <CardDescription>{poll.description}</CardDescription>}
               <p className="text-sm text-muted-foreground">
                 {isPastEndDate 

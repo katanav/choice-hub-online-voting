@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePolls } from "@/hooks/usePolls";
 import { toast } from "@/components/ui/use-toast";
@@ -26,6 +26,8 @@ const CreatePoll = () => {
     { id: 2, text: "" },
   ]);
   const [isMultipleChoice, setIsMultipleChoice] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOptionChange = (id: number, value: string) => {
@@ -89,6 +91,16 @@ const CreatePoll = () => {
       });
       return false;
     }
+
+    // Check if password is provided for private polls
+    if (isPrivate && !password.trim()) {
+      toast({
+        title: "Password required",
+        description: "Please provide a password for your private poll.",
+        variant: "destructive"
+      });
+      return false;
+    }
     
     return true;
   };
@@ -120,7 +132,9 @@ const CreatePoll = () => {
         pollDescription.trim(),
         optionTexts,
         endDate,
-        isMultipleChoice
+        isMultipleChoice,
+        isPrivate,
+        isPrivate ? password : null
       );
       
       if (pollId) {
@@ -181,13 +195,43 @@ const CreatePoll = () => {
                     min={new Date().toISOString().split('T')[0]} // Today as min date
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="multiple-choice" 
-                    checked={isMultipleChoice}
-                    onCheckedChange={(checked) => setIsMultipleChoice(!!checked)} 
-                  />
-                  <Label htmlFor="multiple-choice">Allow multiple selections</Label>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="multiple-choice" 
+                      checked={isMultipleChoice}
+                      onCheckedChange={(checked) => setIsMultipleChoice(!!checked)} 
+                    />
+                    <Label htmlFor="multiple-choice">Allow multiple selections</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="private-poll" 
+                      checked={isPrivate}
+                      onCheckedChange={(checked) => setIsPrivate(!!checked)} 
+                    />
+                    <Label htmlFor="private-poll" className="flex items-center gap-1">
+                      <Lock className="h-4 w-4" /> Make this poll private
+                    </Label>
+                  </div>
+                  
+                  {isPrivate && (
+                    <div className="grid gap-2 pl-6">
+                      <Label htmlFor="password">Poll Password</Label>
+                      <Input 
+                        id="password" 
+                        type="password" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        placeholder="Enter a password for access"
+                        required={isPrivate}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Users will need this password to access your poll
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

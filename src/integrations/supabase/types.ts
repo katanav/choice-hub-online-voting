@@ -46,6 +46,8 @@ export type Database = {
           end_date: string
           id: string
           is_multiple_choice: boolean
+          is_private: boolean
+          password: string | null
           title: string
           updated_at: string
         }
@@ -56,6 +58,8 @@ export type Database = {
           end_date: string
           id?: string
           is_multiple_choice?: boolean
+          is_private?: boolean
+          password?: string | null
           title: string
           updated_at?: string
         }
@@ -66,6 +70,8 @@ export type Database = {
           end_date?: string
           id?: string
           is_multiple_choice?: boolean
+          is_private?: boolean
+          password?: string | null
           title?: string
           updated_at?: string
         }
@@ -115,7 +121,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_poll_password: {
+        Args: { poll_id: string; password_attempt: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
