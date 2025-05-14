@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,7 +36,7 @@ export const usePolls = () => {
       const { data: pollsData, error: pollsError } = await supabase
         .from('polls')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('end_date', { ascending: true }); // Sort by end_date ascending (soonest first)
       
       if (pollsError) throw pollsError;
 
@@ -102,6 +101,28 @@ export const usePolls = () => {
     if (!user) return null;
     
     try {
+      // Validate that the end date is in the future
+      const endDateObj = new Date(endDate);
+      const now = new Date();
+      
+      if (isNaN(endDateObj.getTime())) {
+        toast({
+          title: "Invalid end date",
+          description: "Please provide a valid end date.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      if (endDateObj <= now) {
+        toast({
+          title: "Invalid end date",
+          description: "The end date must be in the future.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
       // Insert the poll
       const { data: newPoll, error: pollError } = await supabase
         .from('polls')
@@ -144,6 +165,41 @@ export const usePolls = () => {
       });
       return null;
     }
+  };
+
+  // Filter polls by date range
+  const filterPollsByDateRange = (
+    polls: Poll[],
+    startDate?: Date | null,
+    endDate?: Date | null,
+    filterYear?: number | null,
+    filterMonth?: number | null,
+    filterDay?: number | null
+  ) => {
+    return polls.filter(poll => {
+      const pollDate = new Date(poll.end_date);
+      
+      // Apply date range filter if provided
+      if (startDate && pollDate < startDate) return false;
+      if (endDate && pollDate > endDate) return false;
+      
+      // Apply year filter if provided
+      if (filterYear !== null && filterYear !== undefined) {
+        if (pollDate.getFullYear() !== filterYear) return false;
+      }
+      
+      // Apply month filter if provided
+      if (filterMonth !== null && filterMonth !== undefined) {
+        if (pollDate.getMonth() !== filterMonth) return false;
+      }
+      
+      // Apply day filter if provided
+      if (filterDay !== null && filterDay !== undefined) {
+        if (pollDate.getDate() !== filterDay) return false;
+      }
+      
+      return true;
+    });
   };
 
   const checkPollPassword = async (pollId: string, password: string) => {
@@ -247,6 +303,7 @@ export const usePolls = () => {
     submitVote,
     hasVoted,
     checkPollPassword,
-    isPollPrivate
+    isPollPrivate,
+    filterPollsByDateRange
   };
 };

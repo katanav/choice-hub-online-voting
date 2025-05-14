@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Plus, Trash2, Lock } from "lucide-react";
+import { Plus, Trash2, Lock, Calendar, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePolls } from "@/hooks/usePolls";
 import { toast } from "@/components/ui/use-toast";
@@ -21,6 +21,7 @@ const CreatePoll = () => {
   const [pollTitle, setPollTitle] = useState("");
   const [pollDescription, setPollDescription] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("23:59");
   const [options, setOptions] = useState([
     { id: 1, text: "" },
     { id: 2, text: "" },
@@ -60,22 +61,35 @@ const CreatePoll = () => {
       return false;
     }
     
-    // Check if end date is provided and is in the future
-    if (!endDate) {
+    // Check if end date and time are provided
+    if (!endDate || !endTime) {
       toast({
-        title: "End date required",
+        title: "End date and time required",
         description: "Please set when the poll will end.",
         variant: "destructive"
       });
       return false;
     }
     
-    const selectedDate = new Date(endDate);
-    const now = new Date();
-    if (selectedDate <= now) {
+    // Parse the selected date and time
+    const currentDate = new Date();
+    const selectedDateTime = new Date(`${endDate}T${endTime}`);
+    
+    // Check if date is valid
+    if (isNaN(selectedDateTime.getTime())) {
       toast({
-        title: "Invalid end date",
-        description: "The end date must be in the future.",
+        title: "Invalid date or time",
+        description: "Please enter a valid end date and time.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    // Check if date/time is in the future
+    if (selectedDateTime <= currentDate) {
+      toast({
+        title: "Invalid end date/time",
+        description: "The end date and time must be in the future.",
         variant: "destructive"
       });
       return false;
@@ -127,11 +141,14 @@ const CreatePoll = () => {
         .filter(option => option.text.trim() !== "")
         .map(option => option.text.trim());
       
+      // Combine date and time
+      const fullEndDate = new Date(`${endDate}T${endTime}`);
+      
       const pollId = await createPoll(
         pollTitle.trim(),
         pollDescription.trim(),
         optionTexts,
-        endDate,
+        fullEndDate.toISOString(),
         isMultipleChoice,
         isPrivate,
         isPrivate ? password : null
@@ -151,6 +168,10 @@ const CreatePoll = () => {
     }
   };
 
+  // Get current date and time formatted for input min values
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -186,14 +207,34 @@ const CreatePoll = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="end-date">End Date</Label>
-                  <Input 
-                    id="end-date" 
-                    type="date" 
-                    value={endDate} 
-                    onChange={(e) => setEndDate(e.target.value)} 
-                    required
-                    min={new Date().toISOString().split('T')[0]} // Today as min date
-                  />
+                  <div className="flex items-center">
+                    <div className="relative flex-grow">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+                      <Input
+                        id="end-date"
+                        type="date"
+                        className="pl-10"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        required
+                        min={today}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="end-time">End Time</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+                    <Input
+                      id="end-time"
+                      type="time"
+                      className="pl-10"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">

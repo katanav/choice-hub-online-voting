@@ -3,13 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Check, Lock, Plus, Search, User, Users, Vote } from "lucide-react";
+import { Check, Lock, Plus, Search, User, Users, Vote, Calendar, X, Filter } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "react-router-dom";
 import { usePolls } from "@/hooks/usePolls";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
 
 const PollCard = ({ poll, isActive = true }) => {
   const totalVotes = poll.options.reduce((sum, option) => sum + (option.votes || 0), 0);
@@ -18,6 +22,9 @@ const PollCard = ({ poll, isActive = true }) => {
   
   // Determine if poll is active based on end date
   const pollIsActive = isActive && !isPastEndDate;
+  
+  // Format the end date to show both date and time
+  const formattedEndDate = format(new Date(poll.end_date), "MMM d, yyyy 'at' h:mm a");
   
   return (
     <Card className="card-hover">
@@ -28,8 +35,8 @@ const PollCard = ({ poll, isActive = true }) => {
         </CardTitle>
         <CardDescription>
           {pollIsActive 
-            ? `Ends on ${new Date(poll.end_date).toLocaleDateString()}`
-            : `Completed on ${new Date(poll.end_date).toLocaleDateString()}`
+            ? `Ends on ${formattedEndDate}`
+            : `Completed on ${formattedEndDate}`
           }
         </CardDescription>
       </CardHeader>
@@ -66,12 +73,97 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Filter active and completed polls
-  const currentDate = new Date();
-  const filteredPolls = polls.filter(poll => 
-    poll.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Date filtering states
+  const [filterType, setFilterType] = useState<"none" | "day" | "month" | "year">("none");
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [isFilterActive, setIsFilterActive] = useState(false);
   
+  // Get current date for reference
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  
+  // Generate years (starting from current year - 5 to current year + 5)
+  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+  
+  // Generate months
+  const months = [
+    { value: 0, label: "January" },
+    { value: 1, label: "February" },
+    { value: 2, label: "March" },
+    { value: 3, label: "April" },
+    { value: 4, label: "May" },
+    { value: 5, label: "June" },
+    { value: 6, label: "July" },
+    { value: 7, label: "August" },
+    { value: 8, label: "September" },
+    { value: 9, label: "October" },
+    { value: 10, label: "November" },
+    { value: 11, label: "December" }
+  ];
+  
+  // Generate days based on selected month and year
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+  
+  const days = selectedYear && selectedMonth !== null
+    ? Array.from(
+        { length: getDaysInMonth(selectedYear, selectedMonth) },
+        (_, i) => ({ value: i + 1, label: String(i + 1) })
+      )
+    : [];
+  
+  // Apply filters
+  const applyFilters = () => {
+    setIsFilterActive(true);
+  };
+  
+  const clearFilters = () => {
+    setFilterType("none");
+    setSelectedYear(null);
+    setSelectedMonth(null);
+    setSelectedDay(null);
+    setIsFilterActive(false);
+  };
+  
+  // Filter polls by date and search term
+  const filterPolls = (polls) => {
+    // First filter by search query
+    let filteredPolls = polls.filter(poll => 
+      poll.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    // Then apply date filters if active
+    if (isFilterActive && filterType !== "none") {
+      filteredPolls = filteredPolls.filter(poll => {
+        const pollDate = new Date(poll.end_date);
+        const pollYear = pollDate.getFullYear();
+        const pollMonth = pollDate.getMonth();
+        const pollDay = pollDate.getDate();
+        
+        if (filterType === "year" && selectedYear !== null) {
+          return pollYear === selectedYear;
+        }
+        
+        if (filterType === "month" && selectedYear !== null && selectedMonth !== null) {
+          return pollYear === selectedYear && pollMonth === selectedMonth;
+        }
+        
+        if (filterType === "day" && selectedYear !== null && selectedMonth !== null && selectedDay !== null) {
+          return pollYear === selectedYear && pollMonth === selectedMonth && pollDay === selectedDay;
+        }
+        
+        return true;
+      });
+    }
+    
+    return filteredPolls;
+  };
+  
+  // Filter and sort polls
+  const filteredPolls = filterPolls(polls);
   const activePolls = filteredPolls.filter(poll => new Date(poll.end_date) > currentDate);
   const completedPolls = filteredPolls.filter(poll => new Date(poll.end_date) <= currentDate);
   
@@ -93,14 +185,132 @@ const Dashboard = () => {
           </div>
 
           <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search polls..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-grow">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search polls..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    <span>{isFilterActive ? "Filters Applied" : "Filter by Date"}</span>
+                    {isFilterActive && (
+                      <span className="ml-1 rounded-full bg-primary w-2 h-2"></span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Filter by Date</h4>
+                    
+                    <div className="space-y-2">
+                      <Label>Filter Type</Label>
+                      <Select
+                        value={filterType}
+                        onValueChange={(value) => setFilterType(value as any)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select filter type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Date Filter</SelectItem>
+                          <SelectItem value="year">Year Only</SelectItem>
+                          <SelectItem value="month">Month and Year</SelectItem>
+                          <SelectItem value="day">Day, Month and Year</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {filterType !== "none" && (
+                      <div className="space-y-2">
+                        <Label>Year</Label>
+                        <Select
+                          value={selectedYear?.toString() || ""}
+                          onValueChange={(value) => {
+                            setSelectedYear(parseInt(value));
+                            // Reset month and day when year changes
+                            setSelectedMonth(null);
+                            setSelectedDay(null);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {years.map(year => (
+                              <SelectItem key={year} value={year.toString()}>
+                                {year}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    {(filterType === "month" || filterType === "day") && selectedYear && (
+                      <div className="space-y-2">
+                        <Label>Month</Label>
+                        <Select
+                          value={selectedMonth?.toString() || ""}
+                          onValueChange={(value) => {
+                            setSelectedMonth(parseInt(value));
+                            // Reset day when month changes
+                            setSelectedDay(null);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {months.map(month => (
+                              <SelectItem key={month.value} value={month.value.toString()}>
+                                {month.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    {filterType === "day" && selectedYear && selectedMonth !== null && (
+                      <div className="space-y-2">
+                        <Label>Day</Label>
+                        <Select
+                          value={selectedDay?.toString() || ""}
+                          onValueChange={(value) => setSelectedDay(parseInt(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select day" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {days.map(day => (
+                              <SelectItem key={day.value} value={day.value.toString()}>
+                                {day.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between pt-2">
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        <X className="h-4 w-4 mr-2" /> Clear
+                      </Button>
+                      <Button size="sm" onClick={applyFilters}>
+                        Apply Filters
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
