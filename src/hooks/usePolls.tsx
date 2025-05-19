@@ -1,8 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
-import * as crypto from 'crypto';
 
 export interface PollOption {
   id: string;
@@ -22,10 +22,20 @@ export interface Poll {
   options: PollOption[];
 }
 
-// Function to hash passwords securely
-const hashPassword = (password: string): string => {
-  // Using SHA-256 for hashing
-  return crypto.createHash('sha256').update(password).digest('hex');
+// Function to hash passwords securely using browser's Web Crypto API
+const hashPassword = async (password: string): Promise<string> => {
+  // Convert the password string to an array buffer
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  
+  // Create a SHA-256 hash
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  
+  // Convert the hash buffer to a hex string
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return hashHex;
 };
 
 export const usePolls = () => {
@@ -131,7 +141,10 @@ export const usePolls = () => {
       }
       
       // Hash the password if provided for private polls
-      const hashedPassword = isPrivate && password ? hashPassword(password) : null;
+      let hashedPassword = null;
+      if (isPrivate && password) {
+        hashedPassword = await hashPassword(password);
+      }
       
       // Insert the poll
       const { data: newPoll, error: pollError } = await supabase
@@ -215,7 +228,7 @@ export const usePolls = () => {
   const checkPollPassword = async (pollId: string, password: string) => {
     try {
       // Hash the password attempt before checking
-      const hashedAttempt = hashPassword(password);
+      const hashedAttempt = await hashPassword(password);
       
       const { data, error } = await supabase
         .rpc('check_poll_password', { 
