@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -219,7 +218,7 @@ export const usePolls = () => {
       const hashedAttempt = hashPassword(password);
       
       const { data, error } = await supabase
-        .rpc('check_poll_password_hash', { 
+        .rpc('check_poll_password', { 
           poll_id: pollId, 
           password_attempt: hashedAttempt 
         });

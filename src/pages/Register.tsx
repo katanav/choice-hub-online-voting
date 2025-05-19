@@ -71,7 +71,7 @@ const Register = () => {
 
   // Check password strength as user types
   const checkPasswordStrength = (password: string) => {
-    if (!password) return "";
+    if (!password) return 0;
     
     let strength = 0;
     if (password.length >= 8) strength += 1;
