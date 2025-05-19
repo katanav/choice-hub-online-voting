@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { toast } from "@/components/ui/use-toast";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -17,15 +18,34 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
 
+  // Add more robust password validation
   const validatePassword = () => {
     if (password !== confirmPassword) {
       setPasswordError("Passwords do not match");
       return false;
     }
-    if (password.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
+    
+    if (password.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
       return false;
     }
+    
+    // Check for password complexity
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!(hasUpperCase && hasLowerCase && hasNumbers)) {
+      setPasswordError("Password must contain uppercase, lowercase, and numbers");
+      return false;
+    }
+    
+    if (!hasSpecialChar) {
+      setPasswordError("Password must include at least one special character");
+      return false;
+    }
+    
     setPasswordError("");
     return true;
   };
@@ -37,8 +57,43 @@ const Register = () => {
     setLoading(true);
     try {
       await signUp(email, password);
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Registration failed",
+        description: "There was a problem creating your account. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Check password strength as user types
+  const checkPasswordStrength = (password: string) => {
+    if (!password) return "";
+    
+    let strength = 0;
+    if (password.length >= 8) strength += 1;
+    if (/[A-Z]/.test(password)) strength += 1;
+    if (/[a-z]/.test(password)) strength += 1;
+    if (/\d/.test(password)) strength += 1;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength += 1;
+    
+    return strength;
+  };
+  
+  const passwordStrength = checkPasswordStrength(password);
+  
+  const getStrengthColor = () => {
+    switch (passwordStrength) {
+      case 0:
+      case 1: return "bg-red-500";
+      case 2:
+      case 3: return "bg-yellow-500";
+      case 4:
+      case 5: return "bg-green-500";
+      default: return "bg-gray-200";
     }
   };
 
@@ -64,6 +119,7 @@ const Register = () => {
                   required 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
@@ -74,7 +130,24 @@ const Register = () => {
                   required 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
                 />
+                {password && (
+                  <>
+                    <div className="h-2 w-full bg-gray-200 rounded-full">
+                      <div 
+                        className={`h-2 rounded-full ${getStrengthColor()}`} 
+                        style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Password strength: {
+                        passwordStrength < 2 ? "Weak" : 
+                        passwordStrength < 4 ? "Medium" : "Strong"
+                      }
+                    </p>
+                  </>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
@@ -84,6 +157,7 @@ const Register = () => {
                   required 
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
                 />
                 {passwordError && (
                   <p className="text-sm font-medium text-destructive">{passwordError}</p>

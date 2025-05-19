@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
+import * as crypto from 'crypto';
 
 export interface PollOption {
   id: string;
@@ -20,6 +22,12 @@ export interface Poll {
   created_by: string;
   options: PollOption[];
 }
+
+// Function to hash passwords securely
+const hashPassword = (password: string): string => {
+  // Using SHA-256 for hashing
+  return crypto.createHash('sha256').update(password).digest('hex');
+};
 
 export const usePolls = () => {
   const [polls, setPolls] = useState<Poll[]>([]);
@@ -123,6 +131,9 @@ export const usePolls = () => {
         return null;
       }
       
+      // Hash the password if provided for private polls
+      const hashedPassword = isPrivate && password ? hashPassword(password) : null;
+      
       // Insert the poll
       const { data: newPoll, error: pollError } = await supabase
         .from('polls')
@@ -132,7 +143,7 @@ export const usePolls = () => {
           end_date: endDate,
           is_multiple_choice: isMultipleChoice,
           is_private: isPrivate,
-          password: password,
+          password: hashedPassword,
           created_by: user.id
         })
         .select()
@@ -204,10 +215,13 @@ export const usePolls = () => {
 
   const checkPollPassword = async (pollId: string, password: string) => {
     try {
+      // Hash the password attempt before checking
+      const hashedAttempt = hashPassword(password);
+      
       const { data, error } = await supabase
-        .rpc('check_poll_password', { 
+        .rpc('check_poll_password_hash', { 
           poll_id: pollId, 
-          password_attempt: password 
+          password_attempt: hashedAttempt 
         });
       
       if (error) throw error;

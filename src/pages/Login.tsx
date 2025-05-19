@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { toast } from "@/components/ui/use-toast";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -15,11 +16,49 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
 
+  // Count failed login attempts to implement rate limiting
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_TIME = 60000; // 1 minute in milliseconds
+  const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if account is locked
+    if (lockedUntil && new Date() < lockedUntil) {
+      const timeLeft = Math.ceil((lockedUntil.getTime() - new Date().getTime()) / 1000);
+      toast({
+        title: "Account temporarily locked",
+        description: `Too many failed login attempts. Please try again in ${timeLeft} seconds.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setLoading(true);
+    
     try {
       await signIn(email, password);
+      // Reset failed attempts on successful login
+      setFailedAttempts(0);
+    } catch (error) {
+      console.error("Login error:", error);
+      
+      // Increment failed attempts
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      
+      // Lock account after too many failed attempts
+      if (newAttempts >= MAX_ATTEMPTS) {
+        const lockTime = new Date(Date.now() + LOCKOUT_TIME);
+        setLockedUntil(lockTime);
+        toast({
+          title: "Account temporarily locked",
+          description: "Too many failed login attempts. Please try again in 1 minute.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -47,6 +86,7 @@ const Login = () => {
                   required 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
                 />
               </div>
               <div className="space-y-2">
@@ -57,11 +97,17 @@ const Login = () => {
                   required 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                 />
               </div>
+              {lockedUntil && new Date() < lockedUntil && (
+                <div className="text-sm text-destructive">
+                  Account locked. Please try again later.
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || (lockedUntil && new Date() < lockedUntil)}>
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
               <div className="text-center text-sm">
