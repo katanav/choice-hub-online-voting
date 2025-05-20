@@ -16,6 +16,7 @@ import Pricing from "./pages/Pricing";
 import Dashboard from "./pages/Dashboard";
 import CreatePoll from "./pages/CreatePoll";
 import VotePoll from "./pages/VotePoll";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,11 @@ const App = () => (
             <Route path="/create-poll" element={
               <ProtectedRoute>
                 <CreatePoll />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } />
             <Route path="/vote/:pollId" element={<VotePoll />} />
